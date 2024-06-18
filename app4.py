@@ -245,6 +245,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
 
     if st.button('Query Database'):
         try:
+            st.write("Querying database...")  # Debugging
             df = query_geometries_within_polygon(polygon_geojson)
             if not df.empty:
                 st.session_state.geojson_list = df['geometry'].tolist()
@@ -257,6 +258,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 st.session_state.map = m
                 
                 # Provide download link for the results as GeoJSON
+                st.write("Creating GeoJSON data...")  # Debugging
                 geojson_data = df_to_geojson(df)
                 st.download_button(
                     label="Download Geometries as GeoJSON",
@@ -266,6 +268,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 )
                 
                 # Provide download link for the results as Shapefile
+                st.write("Creating Shapefile...")  # Debugging
                 shapefile_zip = df_to_shapefile(df)
                 st.download_button(
                     label="Download Geometries as Shapefile",
