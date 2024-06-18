@@ -179,19 +179,24 @@ def add_geometries_to_map(geojson_list, metadata_list, map_object):
 
 def df_to_geojson(df):
     """Convert DataFrame with geometry and metadata to GeoJSON."""
+    def convert_value(value):
+        if isinstance(value, pd.Timestamp):
+            return value.isoformat()
+        return value
+
     features = []
     for _, row in df.iterrows():
+        properties = {key: convert_value(value) for key, value in row.drop("geometry").to_dict().items()}
         feature = {
             "type": "Feature",
             "geometry": json.loads(row["geometry"]),
-            "properties": {
-                **row.drop("geometry").to_dict(),
-                "srid": row["srid"],
-                "drawing_info": row["drawing_info"]
-            },
+            "properties": properties,
         }
         features.append(feature)
     return json.dumps({"type": "FeatureCollection", "features": features})
+
+# The rest of the code remains unchanged
+
     
 st.title('Streamlit Map Application')
 
