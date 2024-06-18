@@ -8,6 +8,10 @@ from shapely.geometry import shape
 from shapely.ops import transform
 from streamlit_folium import st_folium
 from folium.plugins import Draw
+import geopandas as gpd
+import tempfile
+import zipfile
+from io import BytesIO
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -129,8 +133,7 @@ def add_geometries_to_map(geojson_list, metadata_list, map_object):
         srid = metadata.pop('srid')
         table_name = metadata.pop('table_name')
         drawing_info_str = metadata.pop('drawing_info', '{}')
-        drawing_info_1 = json.dumps(drawing_info_str)
-        drawing_info = json.loads(drawing_info_1)
+        drawing_info = json.loads(drawing_info_str)
         geometry = json.loads(geojson)
 
         # Define the source and destination coordinate systems
@@ -195,9 +198,22 @@ def df_to_geojson(df):
         features.append(feature)
     return json.dumps({"type": "FeatureCollection", "features": features})
 
-# The rest of the code remains unchanged
+def df_to_shapefile(df):
+    """Convert DataFrame with geometry and metadata to Shapefile and return a zipped file."""
+    gdf = gpd.GeoDataFrame(df.drop(columns=['geometry']), geometry=df['geometry'].apply(shape))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        shapefile_path = f"{tmpdir}/output.shp"
+        gdf.to_file(shapefile_path)
+        
+        # Create a zip file
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w') as zipf:
+            for ext in ['shp', 'shx', 'dbf', 'prj']:
+                zipf.write(f"{tmpdir}/output.{ext}", f"output.{ext}")
+        
+        zip_buffer.seek(0)
+        return zip_buffer
 
-    
 st.title('Streamlit Map Application')
 
 # Create a Folium map centered on Los Angeles if not already done
@@ -223,6 +239,10 @@ st_data = st_folium(st.session_state.map, width=700, height=500, key="initial_ma
 if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing']:
     polygon_geojson = json.dumps(st_data['last_active_drawing']['geometry'])
     
+    # Add the drawn polygon to the map
+    drawn_polygon = json.loads(polygon_geojson)
+    folium.GeoJson(drawn_polygon, name="Drawn Polygon", style_function=lambda x: {'fillColor': '#00000000', 'color': '#0000FF'}).add_to(st.session_state.map)
+
     if st.button('Query Database'):
         try:
             df = query_geometries_within_polygon(polygon_geojson)
@@ -232,15 +252,26 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 
                 # Clear the existing map and reinitialize it
                 m = initialize_map()
+                folium.GeoJson(drawn_polygon, name="Drawn Polygon", style_function=lambda x: {'fillColor': '#00000000', 'color': '#0000FF'}).add_to(m)
                 add_geometries_to_map(st.session_state.geojson_list, st.session_state.metadata_list, m)
                 st.session_state.map = m
-                # Provide download link for the results
+                
+                # Provide download link for the results as GeoJSON
                 geojson_data = df_to_geojson(df)
                 st.download_button(
                     label="Download Geometries as GeoJSON",
                     data=geojson_data,
                     file_name="geometries.geojson",
                     mime="application/json"
+                )
+                
+                # Provide download link for the results as Shapefile
+                shapefile_zip = df_to_shapefile(df)
+                st.download_button(
+                    label="Download Geometries as Shapefile",
+                    data=shapefile_zip,
+                    file_name="geometries.zip",
+                    mime="application/zip"
                 )
             else:
                 st.write("No geometries found within the drawn polygon.")
