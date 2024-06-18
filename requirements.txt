@@ -1,0 +1,9 @@
+streamlit
+pandas
+psycopg2-binary
+folium
+streamlit-folium
+python-dotenv
+pyproj
+shapely
+plotly
