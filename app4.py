@@ -12,6 +12,8 @@ import geopandas as gpd
 import tempfile
 import zipfile
 from io import BytesIO
+from arcgis.gis import GIS
+from arcgis.features import FeatureLayerCollection
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -22,6 +24,8 @@ if 'map_initialized' not in st.session_state:
     st.session_state.map_initialized = False
 if 'table_columns' not in st.session_state:
     st.session_state.table_columns = {}
+if 'gdf' not in st.session_state:
+    st.session_state.gdf = None
 
 # Database connection function
 def get_connection():
@@ -214,6 +218,21 @@ def df_to_shapefile(df):
         zip_buffer.seek(0)
         return zip_buffer
 
+def upload_to_arcgis(gdf):
+    gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
+    gdf.spatial.set_geometry("geometry")
+    feature_collection = gdf.spatial.to_featureset()
+    
+    item_properties = {
+        "title": "Streamlit Upload",
+        "type": "Feature Collection",
+        "tags": "Streamlit, ArcGIS",
+        "snippet": "Features uploaded from Streamlit"
+    }
+    
+    feature_layer_item = gis.content.add(item_properties, feature_collection)
+    return feature_layer_item
+
 st.title('Streamlit Map Application')
 
 # Create a Folium map centered on Los Angeles if not already done
@@ -251,6 +270,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 st.session_state.geojson_list = df['geometry'].tolist()
                 st.session_state.metadata_list = df.to_dict(orient='records')
                 
+                # Convert the DataFrame to a GeoDataFrame
+                st.session_state.gdf = gpd.GeoDataFrame(df.drop(columns=['geometry']), geometry=df['geometry'].apply(shape))
+                
                 # Clear the existing map and reinitialize it
                 m = initialize_map()
                 folium.GeoJson(drawn_polygon, name="Drawn Polygon", style_function=lambda x: {'fillColor': '#00000000', 'color': '#0000FF'}).add_to(m)
@@ -260,6 +282,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Provide download link for the results as GeoJSON
                 st.write("Creating GeoJSON data...")  # Debugging
                 geojson_data = df_to_geojson(df)
+                st.session_state.geojson_data = geojson_data
                 st.download_button(
                     label="Download Geometries as GeoJSON",
                     data=geojson_data,
@@ -276,6 +299,12 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     file_name="geometries.zip",
                     mime="application/zip"
                 )
+                
+                # Button to upload to ArcGIS Online
+                if st.button('Upload to ArcGIS Online'):
+                    st.write("Uploading to ArcGIS Online...")
+                    upload_to_arcgis(st.session_state.gdf)
+                    st.success("Upload complete!")
             else:
                 st.write("No geometries found within the drawn polygon.")
         except Exception as e:
