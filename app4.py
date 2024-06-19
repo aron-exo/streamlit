@@ -8,12 +8,6 @@ from shapely.geometry import shape
 from shapely.ops import transform
 from streamlit_folium import st_folium
 from folium.plugins import Draw
-import geopandas as gpd
-import tempfile
-import zipfile
-from io import BytesIO
-from arcgis.gis import GIS
-from arcgis.features import FeatureLayerCollection
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -24,8 +18,6 @@ if 'map_initialized' not in st.session_state:
     st.session_state.map_initialized = False
 if 'table_columns' not in st.session_state:
     st.session_state.table_columns = {}
-if 'gdf' not in st.session_state:
-    st.session_state.gdf = None
 
 # Database connection function
 def get_connection():
@@ -137,7 +129,8 @@ def add_geometries_to_map(geojson_list, metadata_list, map_object):
         srid = metadata.pop('srid')
         table_name = metadata.pop('table_name')
         drawing_info_str = metadata.pop('drawing_info', '{}')
-        drawing_info = json.loads(drawing_info_str)
+        drawing_info_1 = json.dumps(drawing_info_str)
+        drawing_info = json.loads(drawing_info_1)
         geometry = json.loads(geojson)
 
         # Define the source and destination coordinate systems
@@ -184,55 +177,6 @@ def add_geometries_to_map(geojson_list, metadata_list, map_object):
         else:
             st.write(f"Unsupported geometry type: {transformed_geom.geom_type}")
 
-def df_to_geojson(df):
-    """Convert DataFrame with geometry and metadata to GeoJSON."""
-    def convert_value(value):
-        if isinstance(value, pd.Timestamp):
-            return value.isoformat()
-        return value
-
-    features = []
-    for _, row in df.iterrows():
-        properties = {key: convert_value(value) for key, value in row.drop("geometry").to_dict().items()}
-        feature = {
-            "type": "Feature",
-            "geometry": json.loads(row["geometry"]),
-            "properties": properties,
-        }
-        features.append(feature)
-    return json.dumps({"type": "FeatureCollection", "features": features})
-
-def df_to_shapefile(df):
-    """Convert DataFrame with geometry and metadata to Shapefile and return a zipped file."""
-    gdf = gpd.GeoDataFrame(df.drop(columns=['geometry']), geometry=df['geometry'].apply(shape))
-    with tempfile.TemporaryDirectory() as tmpdir:
-        shapefile_path = f"{tmpdir}/output.shp"
-        gdf.to_file(shapefile_path)
-        
-        # Create a zip file
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w') as zipf:
-            for ext in ['shp', 'shx', 'dbf', 'prj']:
-                zipf.write(f"{tmpdir}/output.{ext}", f"output.{ext}")
-        
-        zip_buffer.seek(0)
-        return zip_buffer
-
-def upload_to_arcgis(gdf):
-    gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
-    gdf.spatial.set_geometry("geometry")
-    feature_collection = gdf.spatial.to_featureset()
-    
-    item_properties = {
-        "title": "Streamlit Upload",
-        "type": "Feature Collection",
-        "tags": "Streamlit, ArcGIS",
-        "snippet": "Features uploaded from Streamlit"
-    }
-    
-    feature_layer_item = gis.content.add(item_properties, feature_collection)
-    return feature_layer_item
-
 st.title('Streamlit Map Application')
 
 # Create a Folium map centered on Los Angeles if not already done
@@ -258,53 +202,17 @@ st_data = st_folium(st.session_state.map, width=700, height=500, key="initial_ma
 if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing']:
     polygon_geojson = json.dumps(st_data['last_active_drawing']['geometry'])
     
-    # Add the drawn polygon to the map
-    drawn_polygon = json.loads(polygon_geojson)
-    folium.GeoJson(drawn_polygon, name="Drawn Polygon", style_function=lambda x: {'fillColor': '#00000000', 'color': '#0000FF'}).add_to(st.session_state.map)
-
     if st.button('Query Database'):
         try:
-            st.write("Querying database...")  # Debugging
             df = query_geometries_within_polygon(polygon_geojson)
             if not df.empty:
                 st.session_state.geojson_list = df['geometry'].tolist()
                 st.session_state.metadata_list = df.to_dict(orient='records')
                 
-                # Convert the DataFrame to a GeoDataFrame
-                st.session_state.gdf = gpd.GeoDataFrame(df.drop(columns=['geometry']), geometry=df['geometry'].apply(shape))
-                
                 # Clear the existing map and reinitialize it
                 m = initialize_map()
-                folium.GeoJson(drawn_polygon, name="Drawn Polygon", style_function=lambda x: {'fillColor': '#00000000', 'color': '#0000FF'}).add_to(m)
                 add_geometries_to_map(st.session_state.geojson_list, st.session_state.metadata_list, m)
                 st.session_state.map = m
-                
-                # Provide download link for the results as GeoJSON
-                st.write("Creating GeoJSON data...")  # Debugging
-                geojson_data = df_to_geojson(df)
-                st.session_state.geojson_data = geojson_data
-                st.download_button(
-                    label="Download Geometries as GeoJSON",
-                    data=geojson_data,
-                    file_name="geometries.geojson",
-                    mime="application/json"
-                )
-                
-                # Provide download link for the results as Shapefile
-                st.write("Creating Shapefile...")  # Debugging
-                shapefile_zip = df_to_shapefile(df)
-                st.download_button(
-                    label="Download Geometries as Shapefile",
-                    data=shapefile_zip,
-                    file_name="geometries.zip",
-                    mime="application/zip"
-                )
-                
-                # Button to upload to ArcGIS Online
-                if st.button('Upload to ArcGIS Online'):
-                    st.write("Uploading to ArcGIS Online...")
-                    upload_to_arcgis(st.session_state.gdf)
-                    st.success("Upload complete!")
             else:
                 st.write("No geometries found within the drawn polygon.")
         except Exception as e:
