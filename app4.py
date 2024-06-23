@@ -305,7 +305,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
                     "snippet": "A web map that includes layers with different drawing styles",
-                    "tags": ["GeoJSON", "Web Map"], "access": "public"
+                    "tags": ["GeoJSON", "Web Map"], "access": "public",
+                    "extent": {
+                        "spatialReference": {"wkid": 4326},
+                        "xmin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][0],
+                        "ymin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][1],
+                        "xmax": st_data['last_active_drawing']['geometry']['coordinates'][0][2][0],
+                        "ymax": st_data['last_active_drawing']['geometry']['coordinates'][0][2][1]
+                    }
                 }
                 webmap_item = webmap.save(item_properties=webmap_properties)
                 # Print the link to the web map
