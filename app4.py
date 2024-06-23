@@ -177,6 +177,27 @@ def add_geometries_to_map(geojson_list, metadata_list, map_object):
         else:
             st.write(f"Unsupported geometry type: {transformed_geom.geom_type}")
 
+def df_to_geojson(df):
+    """Convert DataFrame with geometry and metadata to GeoJSON."""
+    def convert_value(value):
+        if isinstance(value, pd.Timestamp):
+            return value.isoformat()
+        return value
+
+    features = []
+    for _, row in df.iterrows():
+        properties = {key: convert_value(value) for key, value in row.drop("geometry").to_dict().items()}
+        feature = {
+            "type": "Feature",
+            "geometry": json.loads(row["geometry"]),
+            "properties": properties,
+        }
+        features.append(feature)
+    return json.dumps({"type": "FeatureCollection", "features": features})
+
+# The rest of the code remains unchanged
+
+    
 st.title('Streamlit Map Application')
 
 # Create a Folium map centered on Los Angeles if not already done
@@ -213,6 +234,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 m = initialize_map()
                 add_geometries_to_map(st.session_state.geojson_list, st.session_state.metadata_list, m)
                 st.session_state.map = m
+                # Provide download link for the results
+                geojson_data = df_to_geojson(df)
+                st.download_button(
+                    label="Download Geometries as GeoJSON",
+                    data=geojson_data,
+                    file_name="geometries.geojson",
+                    mime="application/json"
+                )
             else:
                 st.write("No geometries found within the drawn polygon.")
         except Exception as e:
