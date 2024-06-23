@@ -7,4 +7,5 @@ python-dotenv
 pyproj
 shapely
 plotly
-geopandas
+arcgis
+gssapi
