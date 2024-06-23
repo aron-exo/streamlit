@@ -8,6 +8,12 @@ from shapely.geometry import shape
 from shapely.ops import transform
 from streamlit_folium import st_folium
 from folium.plugins import Draw
+from arcgis.gis import GIS
+from arcgis.mapping import WebMap
+from arcgis.features import FeatureSet
+from pyproj import Transformer
+import numpy as np
+import time
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -195,9 +201,21 @@ def df_to_geojson(df):
         features.append(feature)
     return json.dumps({"type": "FeatureCollection", "features": features})
 
-# The rest of the code remains unchanged
+# Function to transform coordinates in a GeoJSON
+def transform_geojson(geojson_data, from_srid, to_srid):
+    transformer = Transformer.from_crs(from_srid, to_srid, always_xy=True)
+    for feature in geojson_data['features']:
+        if 'coordinates' in feature['geometry']:
+            if feature['geometry']['type'] == "MultiLineString":
+                transformed_lines = []
+                for line in feature['geometry']['coordinates']:
+                    transformed_lines.append([transformer.transform(x, y) for x, y in line])
+                feature['geometry']['coordinates'] = transformed_lines
+            else:
+                feature['geometry']['coordinates'] = [transformer.transform(x, y) for x, y in feature['geometry']['coordinates']]
+    return geojson_data
 
-    
+# Initialize Streamlit app
 st.title('Streamlit Map Application')
 
 # Create a Folium map centered on Los Angeles if not already done
@@ -235,11 +253,67 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 m = initialize_map()
                 add_geometries_to_map(st.session_state.geojson_list, st.session_state.metadata_list, m)
                 st.session_state.map = m
+                
+                # Convert DataFrame to GeoJSON
+                geojson_data = json.loads(df_to_geojson(df))
+                
+                # Transform coordinates in GeoJSON
+                transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
+                
+                # Authenticate with ArcGIS Online
+                gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
+                
+                # Create a new web map
+                webmap = WebMap()
+                
+                # Function to create layers based on drawing info styles
+                def create_layers_by_styles(features):
+                    style_dict = {}
+                    for feature in features:
+                        drawing_info = feature.get('properties', {}).get('drawing_info')
+                        if drawing_info:
+                            style_key = json.dumps(drawing_info)
+                            if style_key not in style_dict:
+                                style_dict[style_key] = {
+                                    "features": [],
+                                    "drawing_info": drawing_info
+                                }
+                            style_dict[style_key]["features"].append(feature)
+                    return style_dict
+                
+                # Extract features and create layers based on drawing info
+                features = transformed_geojson['features']
+                styled_layers = create_layers_by_styles(features)
+                
+                # Iterate over each styled layer and add it to the web map
+                for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
+                    layer_name = f"Layer_{i}"
+                    
+                    # Create a GeoJSON dictionary for this layer
+                    geojson_layer = {
+                        "type": "FeatureCollection",
+                        "features": styled_layer["features"]
+                    }
+                    
+                    # Convert the GeoJSON to a FeatureSet
+                    fs = FeatureSet.from_geojson(geojson_layer)
+                    
+                    # Add the FeatureSet as a layer to the web map
+                    webmap.add_layer(fs)
+                
+                # Save the web map as a new item in ArcGIS Online
+                webmap_properties = {
+                    "title": "Web Map with Styled GeoJSON Layers",
+                    "snippet": "A web map that includes layers with different drawing styles",
+                    "tags": ["GeoJSON", "Web Map"]
+                }
+                webmap_item = webmap.save(item_properties=webmap_properties)
+                st.success(f"Web map saved with ID: {webmap_item.id}")
+                
                 # Provide download link for the results
-                geojson_data = df_to_geojson(df)
                 st.download_button(
                     label="Download Geometries as GeoJSON",
-                    data=geojson_data,
+                    data=json.dumps(transformed_geojson),
                     file_name="geometries.geojson",
                     mime="application/json"
                 )
