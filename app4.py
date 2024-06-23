@@ -305,9 +305,12 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
                     "snippet": "A web map that includes layers with different drawing styles",
-                    "tags": ["GeoJSON", "Web Map"]
+                    "tags": ["GeoJSON", "Web Map"], "access": "public"
                 }
                 webmap_item = webmap.save(item_properties=webmap_properties)
+                # Print the link to the web map
+                webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
+                st.success(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
                 
                 # Provide download link for the results
