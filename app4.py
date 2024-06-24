@@ -4,7 +4,7 @@ import psycopg2
 import json
 import folium
 import pyproj
-from shapely.geometry import shape
+from shapely.geometry import shape, box
 from shapely.ops import transform
 from streamlit_folium import st_folium
 from folium.plugins import Draw
@@ -188,6 +188,8 @@ def df_to_geojson(df):
     def convert_value(value):
         if isinstance(value, pd.Timestamp):
             return value.isoformat()
+        if pd.isna(value):
+            return None
         return value
 
     features = []
