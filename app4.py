@@ -211,16 +211,27 @@ def transform_geojson(geojson_data, from_srid, to_srid):
     transformer = Transformer.from_crs(from_srid, to_srid, always_xy=True)
     for feature in geojson_data['features']:
         coords = feature['geometry']['coordinates']
-        if feature['geometry']['type'] == "MultiLineString":
+        if not coords:  # Skip empty coordinate arrays
+            continue
+        if feature['geometry']['type'] == "Point":
+            feature['geometry']['coordinates'] = transformer.transform(*coords)
+        elif feature['geometry']['type'] == "MultiPoint":
+            feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
+        elif feature['geometry']['type'] == "LineString":
+            feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
+        elif feature['geometry']['type'] == "MultiLineString":
             transformed_lines = []
             for line in coords:
                 transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
             feature['geometry']['coordinates'] = transformed_lines
         elif feature['geometry']['type'] == "Polygon":
             feature['geometry']['coordinates'] = [[transformer.transform(*coord) for coord in ring if isinstance(coord, (list, tuple)) and len(coord) == 2] for ring in coords]
-        else:
-            feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
+        elif feature['geometry']['type'] == "MultiPolygon":
+            feature['geometry']['coordinates'] = [[[transformer.transform(*coord) for coord in ring if isinstance(coord, (list, tuple)) and len(coord) == 2] for ring in polygon] for polygon in coords]
+        elif feature['geometry']['type'] == "GeometryCollection":
+            feature['geometry']['geometries'] = [transform_geojson({'type': 'Feature', 'geometry': geom, 'properties': {}}, from_srid, to_srid)['geometry'] for geom in feature['geometry']['geometries']]
     return geojson_data
+
 
 # Initialize Streamlit app
 st.title('Streamlit Map Application')
