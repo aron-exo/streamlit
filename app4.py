@@ -251,7 +251,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
     if st.button('Query Database'):
         try:
             df = query_geometries_within_polygon(polygon_geojson)
-            st.write(df.head())
+            #st.write(df.head())
             if not df.empty:
                 st.session_state.geojson_list = df['geometry'].tolist()
                 st.session_state.metadata_list = df.to_dict(orient='records')
@@ -299,7 +299,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Extract features and create layers based on drawing info
                 features = transformed_geojson['features']
                 styled_layers = create_layers_by_styles(features)
-                st.write(features)
+                #st.write(features)
                 st.write(styled_layers)
 
                 
