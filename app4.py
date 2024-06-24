@@ -303,7 +303,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     fs = FeatureSet.from_geojson(geojson_layer)
                     
                     # Extract the renderer from the drawing info
-                    renderer = styled_layer["drawing_info"].get("renderer", {})
+                    renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
 
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
@@ -312,16 +312,22 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     })
                 
                 # Save the web map as a new item in ArcGIS Online
+                xmin = st_data['last_active_drawing']['geometry']['coordinates'][0][0][0]
+                ymin = st_data['last_active_drawing']['geometry']['coordinates'][0][0][1]
+                xmax = st_data['last_active_drawing']['geometry']['coordinates'][0][2][0]
+                ymax = st_data['last_active_drawing']['geometry']['coordinates'][0][2][1]
+                print(f"xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
+                
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
                     "snippet": "A web map that includes layers with different drawing styles",
                     "tags": ["GeoJSON", "Web Map"],
                     "extent": {
                         "spatialReference": {"wkid": 4326},
-                        "xmin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][0],
-                        "ymin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][1],
-                        "xmax": st_data['last_active_drawing']['geometry']['coordinates'][0][2][0],
-                        "ymax": st_data['last_active_drawing']['geometry']['coordinates'][0][2][1]
+                        "xmin": xmin,
+                        "ymin": ymin,
+                        "xmax": xmax,
+                        "ymax": ymax
                     }
                 }
                 webmap_item = webmap.save(item_properties=webmap_properties)
