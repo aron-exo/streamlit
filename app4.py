@@ -121,6 +121,9 @@ def query_geometries_within_polygon(polygon_geojson):
             st.session_state.table_columns[table] = get_table_columns(table)
         progress_bar.progress((idx + 1) / total_tables)
 
+    # Filter out empty DataFrames before concatenation
+    all_data = [df for df in all_data if not df.empty]
+
     if all_data:
         return pd.concat(all_data, ignore_index=True)
     else:
@@ -312,10 +315,13 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     })
                 
                 # Save the web map as a new item in ArcGIS Online
-                xmin = st_data['last_active_drawing']['geometry']['coordinates'][0][0][0]
-                ymin = st_data['last_active_drawing']['geometry']['coordinates'][0][0][1]
-                xmax = st_data['last_active_drawing']['geometry']['coordinates'][0][2][0]
-                ymax = st_data['last_active_drawing']['geometry']['coordinates'][0][2][1]
+                coordinates = st_data['last_active_drawing']['geometry']['coordinates']
+                print(f"Coordinates: {coordinates}")
+                
+                xmin = coordinates[0][0][0]
+                ymin = coordinates[0][0][1]
+                xmax = coordinates[0][2][0]
+                ymax = coordinates[0][2][1]
                 print(f"xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
                 
                 webmap_properties = {
