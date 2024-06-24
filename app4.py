@@ -213,6 +213,8 @@ def transform_geojson(geojson_data, from_srid, to_srid):
             for line in coords:
                 transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
             feature['geometry']['coordinates'] = transformed_lines
+        elif feature['geometry']['type'] == "Polygon":
+            feature['geometry']['coordinates'] = [[transformer.transform(*coord) for coord in ring if isinstance(coord, (list, tuple)) and len(coord) == 2] for ring in coords]
         else:
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
     return geojson_data
@@ -246,7 +248,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
     if st.button('Query Database'):
         try:
             df = query_geometries_within_polygon(polygon_geojson)
-            #st.write(df.head())
+            st.write(df.head())
             if not df.empty:
                 st.session_state.geojson_list = df['geometry'].tolist()
                 st.session_state.metadata_list = df.to_dict(orient='records')
