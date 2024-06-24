@@ -317,26 +317,25 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Iterate over each styled layer and add it to the web map
                 for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
                     layer_name = f"Layer_{i}"
-                    st.info(layer_name)
+                    
                     # Create a GeoJSON dictionary for this layer
                     geojson_layer = {
                         "type": "FeatureCollection",
                         "features": styled_layer["features"]
                     }
-                    st.info(layer_name)
-                    st.info(geojson_layer)
+                   
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
-                    st.info(layer_name)
+                    
                     # Extract the renderer from the drawing info
                     renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
-                    st.info(layer_name)
+                    
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
                         "title": layer_name,
                         "renderer": renderer
                     })
-                    st.info(len(webmap.layers))
+                
                 # Save the web map as a new item in ArcGIS Online
                 coordinates = st_data['last_active_drawing']['geometry']['coordinates']
                 print(f"Coordinates: {coordinates}")
