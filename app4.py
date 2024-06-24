@@ -312,13 +312,13 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "type": "FeatureCollection",
                         "features": styled_layer["features"]
                     }
-                    
+                    st.markdown(layer_name)
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
-                    
+                    st.markdown(layer_name)
                     # Extract the renderer from the drawing info
                     renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
-
+                    st.markdown(layer_name)
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
                         "title": layer_name,
