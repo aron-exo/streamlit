@@ -266,6 +266,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 
                 # Transform coordinates in GeoJSON
                 transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
+                st.write(transformed_geojson)
+                                # Provide download link for the results
+                st.download_button(
+                    label="Download Geometries as GeoJSON",
+                    data=json.dumps(transformed_geojson),
+                    file_name="geometries.geojson",
+                    mime="application/json"
+                )
                 
                 # Authenticate with ArcGIS Online
                 gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
@@ -346,13 +354,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
                 
-                # Provide download link for the results
-                st.download_button(
-                    label="Download Geometries as GeoJSON",
-                    data=json.dumps(transformed_geojson),
-                    file_name="geometries.geojson",
-                    mime="application/json"
-                )
+
             else:
                 st.write("No geometries found within the drawn polygon.")
         except Exception as e:
