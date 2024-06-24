@@ -266,7 +266,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 
                 # Transform coordinates in GeoJSON
                 transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
-                st.write(transformed_geojson)
+                
                                 # Provide download link for the results
                 st.download_button(
                     label="Download Geometries as GeoJSON",
