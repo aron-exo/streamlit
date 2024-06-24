@@ -299,6 +299,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Extract features and create layers based on drawing info
                 features = transformed_geojson['features']
                 styled_layers = create_layers_by_styles(features)
+                st.write(features)
+                st.write(styled_layers)
+
                 
                 # Iterate over each styled layer and add it to the web map
                 for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
