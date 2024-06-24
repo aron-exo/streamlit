@@ -4,7 +4,7 @@ import psycopg2
 import json
 import folium
 import pyproj
-from shapely.geometry import shape, box
+from shapely.geometry import shape
 from shapely.ops import transform
 from streamlit_folium import st_folium
 from folium.plugins import Draw
@@ -188,8 +188,6 @@ def df_to_geojson(df):
     def convert_value(value):
         if isinstance(value, pd.Timestamp):
             return value.isoformat()
-        if pd.isna(value):
-            return None
         return value
 
     features = []
@@ -300,20 +298,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
                     
-                    # Extract the renderer from the drawing info
-                    renderer = styled_layer["drawing_info"].get("renderer", {})
-
-                    # Add the FeatureSet as a layer to the web map with a title and renderer
-                    webmap.add_layer(fs, {
-                        "title": layer_name,
-                        "renderer": renderer
-                    })
+                    # Add the FeatureSet as a layer to the web map
+                    webmap.add_layer(fs)
                 
                 # Save the web map as a new item in ArcGIS Online
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
                     "snippet": "A web map that includes layers with different drawing styles",
-                    "tags": ["GeoJSON", "Web Map"],
+                    "tags": ["GeoJSON", "Web Map"], "access": "public",
                     "extent": {
                         "spatialReference": {"wkid": 4326},
                         "xmin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][0],
@@ -323,13 +315,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     }
                 }
                 webmap_item = webmap.save(item_properties=webmap_properties)
-                
-                # Make the web map public
-                webmap_item.share(everyone=True)
-                
                 # Print the link to the web map
                 webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
-                st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
+                st.success(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
                 
                 # Provide download link for the results
