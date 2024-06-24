@@ -316,7 +316,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 
                 # Iterate over each styled layer and add it to the web map
                 for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
-                    layer_name = f"Layer_{i}"
+                    layer_name = styled_layer["features"][0]["properties"]["table_name"]
                     
                     # Create a GeoJSON dictionary for this layer
                     geojson_layer = {
