@@ -188,6 +188,8 @@ def df_to_geojson(df):
     def convert_value(value):
         if isinstance(value, pd.Timestamp):
             return value.isoformat()
+        if pd.isna(value):
+            return None
         return value
 
     features = []
@@ -205,14 +207,14 @@ def df_to_geojson(df):
 def transform_geojson(geojson_data, from_srid, to_srid):
     transformer = Transformer.from_crs(from_srid, to_srid, always_xy=True)
     for feature in geojson_data['features']:
-        if 'coordinates' in feature['geometry']:
-            if feature['geometry']['type'] == "MultiLineString":
-                transformed_lines = []
-                for line in feature['geometry']['coordinates']:
-                    transformed_lines.append([transformer.transform(x, y) for x, y in line])
-                feature['geometry']['coordinates'] = transformed_lines
-            else:
-                feature['geometry']['coordinates'] = [transformer.transform(x, y) for x, y in feature['geometry']['coordinates']]
+        coords = feature['geometry']['coordinates']
+        if feature['geometry']['type'] == "MultiLineString":
+            transformed_lines = []
+            for line in coords:
+                transformed_lines.append([transformer.transform(*coord) for coord in line])
+            feature['geometry']['coordinates'] = transformed_lines
+        else:
+            feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords]
     return geojson_data
 
 # Initialize Streamlit app
@@ -298,14 +300,20 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
                     
-                    # Add the FeatureSet as a layer to the web map
-                    webmap.add_layer(fs)
+                    # Extract the renderer from the drawing info
+                    renderer = styled_layer["drawing_info"].get("renderer", {})
+
+                    # Add the FeatureSet as a layer to the web map with a title and renderer
+                    webmap.add_layer(fs, {
+                        "title": layer_name,
+                        "renderer": renderer
+                    })
                 
                 # Save the web map as a new item in ArcGIS Online
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
                     "snippet": "A web map that includes layers with different drawing styles",
-                    "tags": ["GeoJSON", "Web Map"], "access": "public",
+                    "tags": ["GeoJSON", "Web Map"],
                     "extent": {
                         "spatialReference": {"wkid": 4326},
                         "xmin": st_data['last_active_drawing']['geometry']['coordinates'][0][0][0],
@@ -315,9 +323,13 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     }
                 }
                 webmap_item = webmap.save(item_properties=webmap_properties)
+                
+                # Make the web map public
+                webmap_item.share(everyone=True)
+                
                 # Print the link to the web map
                 webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
-                st.success(f"Web map saved and made public. [View the web map]({webmap_url})")
+                st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
                 
                 # Provide download link for the results
