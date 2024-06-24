@@ -313,6 +313,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "features": styled_layer["features"]
                     }
                     st.info(layer_name)
+                    st.info(geojson_layer)
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
                     st.info(layer_name)
