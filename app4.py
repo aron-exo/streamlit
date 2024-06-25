@@ -283,7 +283,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
             # Apply format_geometry to the 'geometry' column
             df['geometry2'] = df.apply(lambda row: format_geometry(row['SHAPE'], row['srid']) if pd.notna(row['SHAPE']) and pd.notna(row['srid']) else None, axis=1)
             sdf = pd.DataFrame.spatial.from_df(df,geometry_column='geometry2')
-            st.write(sdf)
+            st.write(df)
         
             
             if not df.empty:
