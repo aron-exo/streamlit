@@ -14,7 +14,6 @@ from arcgis.features import FeatureSet
 from pyproj import Transformer
 import numpy as np
 import time
-from arcgis.features import GeoAccessor, GeoSeriesAccessor
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -264,28 +263,6 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
         try:
             df = query_geometries_within_polygon(polygon_geojson)
             st.write(df)
-
-                        # Ensure the DataFrame is spatially enabled
-            def format_geometry(geom, srid):
-                if isinstance(geom, str):
-                    geom = json.loads(geom)
-                if geom['type'] == 'Point':
-                    return {"spatialReference": {"wkid": srid}, "x": geom['coordinates'][0], "y": geom['coordinates'][1]}
-                elif geom['type'] == 'LineString':
-                    return {"spatialReference": {"wkid": srid}, "paths": [geom['coordinates']]}
-                elif geom['type'] == 'Polygon':
-                    return {"spatialReference": {"wkid": srid}, "rings": geom['coordinates']}
-                elif geom['type'] == 'MultiLineString':
-                    return {"spatialReference": {"wkid": srid}, "paths": geom['coordinates']}
-                else:
-                    return geom
-            
-            # Apply format_geometry to the 'geometry' column
-            df['geometry2'] = df.apply(lambda row: format_geometry(row['SHAPE'], row['srid']) if pd.notna(row['SHAPE']) and pd.notna(row['srid']) else None, axis=1)
-            sdf = pd.DataFrame.spatial.from_df(df,geometry_column='geometry2')
-            st.write(df)
-        
-            
             if not df.empty:
                 st.session_state.geojson_list = df['geometry'].tolist()
                 st.session_state.metadata_list = df.to_dict(orient='records')
