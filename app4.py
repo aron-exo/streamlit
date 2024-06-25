@@ -312,24 +312,19 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 styled_layers = create_layers_by_styles(features)
                 #st.write(features)
                 #st.write(styled_layers)
-                st.download_button(
-                    label="Download styled_layers as GeoJSON",
-                    data=json.dumps(styled_layers),
-                    file_name="styled_layers.geojson",
-                    mime="application/json"
-                )
+
 
                 
                 # Iterate over each styled layer and add it to the web map
                 for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
                     layer_name = styled_layer["features"][0]["properties"]["table_name"]
-                    
+                    st.write(i)
                     # Create a GeoJSON dictionary for this layer
                     geojson_layer = {
                         "type": "FeatureCollection",
                         "features": styled_layer["features"]
                     }
-                   
+                                   
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
                     
@@ -341,6 +336,13 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "title": layer_name,
                         "renderer": renderer
                     })
+
+                st.download_button(
+                    label="Download geojson_layer as GeoJSON",
+                    data=json.dumps(geojson_layer),
+                    file_name="geojson_layer .geojson",
+                    mime="application/json"
+                )
                 
                 # Save the web map as a new item in ArcGIS Online
                 coordinates = st_data['last_active_drawing']['geometry']['coordinates']
