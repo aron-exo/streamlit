@@ -327,7 +327,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                                    
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
-                    
+                    st.write(fs.features)
                     # Extract the renderer from the drawing info
                     renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
                     
