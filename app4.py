@@ -327,19 +327,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                                    
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
-
-                    text_data = "\n".join(fs.features)
-                    # Convert text data to a downloadable format
-                    text_file = text_data.encode('utf-8')
                     
-                    # Create a download button for the text file
-                    st.download_button(
-                        label="Download Text File",
-                        data=text_file,
-                        file_name="sample.txt",
-                        mime="text/plain"
-                    )
-
+                    
+                    
                     # Extract the renderer from the drawing info
                     renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
                     
@@ -348,7 +338,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "title": layer_name,
                         "renderer": renderer
                     })
-
+                st.info(fs.features)
 
                 
                 # Save the web map as a new item in ArcGIS Online
