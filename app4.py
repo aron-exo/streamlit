@@ -312,7 +312,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 styled_layers = create_layers_by_styles(features)
                 #st.write(features)
                 #st.write(styled_layers)
-
+                
 
                 
                 # Iterate over each styled layer and add it to the web map
@@ -338,8 +338,13 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "title": layer_name,
                         "renderer": renderer
                     })
-                st.info(fs.features)
-
+                #st.info(fs.features)
+                st.download_button(
+                    label="Download fsfeatures as GeoJSON",
+                    data=json.dumps(fs.features[0]),
+                    file_name="fsfeatures.geojson",
+                    mime="application/json"
+                )
                 
                 # Save the web map as a new item in ArcGIS Online
                 coordinates = st_data['last_active_drawing']['geometry']['coordinates']
