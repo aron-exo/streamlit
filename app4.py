@@ -328,8 +328,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
 
+                    text_data = "\n".join(fs.features)
                     # Convert text data to a downloadable format
-                    text_file = (fs.features).encode('utf-8')
+                    text_file = text_data.encode('utf-8')
                     
                     # Create a download button for the text file
                     st.download_button(
