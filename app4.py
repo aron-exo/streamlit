@@ -325,7 +325,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     #    "features": styled_layer["features"]
                    # }
 
-                      geojson_layer = {
+                    geojson_layer = {
                         "type": "FeatureCollection",
                         "features": transformed_geojson['features']
                     }
