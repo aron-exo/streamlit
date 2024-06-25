@@ -320,9 +320,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     layer_name = styled_layer["features"][0]["properties"]["table_name"]
                     st.write(i)
                     # Create a GeoJSON dictionary for this layer
-                    geojson_layer = {
+                   # geojson_layer = {
+                     #   "type": "FeatureCollection",
+                    #    "features": styled_layer["features"]
+                   # }
+
+                      geojson_layer = {
                         "type": "FeatureCollection",
-                        "features": styled_layer["features"]
+                        "features": transformed_geojson['features']
                     }
                                    
                     # Convert the GeoJSON to a FeatureSet
@@ -331,13 +336,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     
                     
                     # Extract the renderer from the drawing info
-                    renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
+                    #renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
                     
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
                         "title": layer_name,
-                        "renderer": renderer
+                        
                     })
+                   # "renderer": renderer
                 #st.info(fs.features)
 
                 
