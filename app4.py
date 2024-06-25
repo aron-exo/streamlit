@@ -339,11 +339,18 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "renderer": renderer
                     })
                 #st.info(fs.features)
+                # Convert the list to a JSON formatted string
+                data_str = json.dumps(fs.features, indent=4)
+                
+                # Convert the JSON string to bytes
+                data_bytes = data_str.encode('utf-8')
+                
+                # Create a download button for the text file
                 st.download_button(
-                    label="Download fsfeatures as GeoJSON",
-                    data=json.dumps(fs.features[0]),
-                    file_name="fsfeatures.geojson",
-                    mime="application/json"
+                    label="Download Data as Text File",
+                    data=data_bytes,
+                    file_name="data.txt",
+                    mime="text/plain"
                 )
                 
                 # Save the web map as a new item in ArcGIS Online
