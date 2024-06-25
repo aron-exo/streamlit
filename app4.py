@@ -310,8 +310,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Extract features and create layers based on drawing info
                 features = transformed_geojson['features']
                 styled_layers = create_layers_by_styles(features)
-                #st.write(features)
-                #st.write(styled_layers)
+               
                 
 
                 
@@ -320,14 +319,9 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     layer_name = styled_layer["features"][0]["properties"]["table_name"]
                     st.write(i)
                     # Create a GeoJSON dictionary for this layer
-                   # geojson_layer = {
-                     #   "type": "FeatureCollection",
-                    #    "features": styled_layer["features"]
-                   # }
-
                     geojson_layer = {
                         "type": "FeatureCollection",
-                        "features": transformed_geojson['features']
+                        "features": styled_layer["features"]
                     }
                                    
                     # Convert the GeoJSON to a FeatureSet
@@ -336,26 +330,25 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     
                     
                     # Extract the renderer from the drawing info
-                    #renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
+                    renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
                     
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
                         "title": layer_name,
-                        
+                        "renderer": renderer
                     })
-                   # "renderer": renderer
-                #st.info(fs.features)
+                
 
                 
                 # Save the web map as a new item in ArcGIS Online
                 coordinates = st_data['last_active_drawing']['geometry']['coordinates']
-                print(f"Coordinates: {coordinates}")
+               # print(f"Coordinates: {coordinates}")
                 
                 xmin = coordinates[0][0][0]
                 ymin = coordinates[0][0][1]
                 xmax = coordinates[0][2][0]
                 ymax = coordinates[0][2][1]
-                print(f"xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
+                #print(f"xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
                 
                 webmap_properties = {
                     "title": "Web Map with Styled GeoJSON Layers",
@@ -376,7 +369,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 
                 # Print the link to the web map
                 webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
-                st.info(fs.features)
+               
                 st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
                 
