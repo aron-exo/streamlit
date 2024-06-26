@@ -255,102 +255,101 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
             dataframes = query_geometries_within_polygon(polygon_geojson)
             if not dataframes:
                 st.write("No geometries found within the drawn polygon.")
-                return
-
-            # Authenticate with ArcGIS Online
-            gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
-            
-            # Create a new web map
-            webmap = WebMap()
-
-            for df in dataframes:
-                st.write(df)
-                table_name = df['table_name'].iloc[0]
+            else:
+                # Authenticate with ArcGIS Online
+                gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
                 
-                # Convert DataFrame to GeoJSON
-                geojson_data = json.loads(df_to_geojson(df))
-                
-                # Transform coordinates in GeoJSON
-                transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
-                
-                # Provide download link for the results
-                st.download_button(
-                    label=f"Download {table_name} Geometries as GeoJSON",
-                    data=json.dumps(transformed_geojson),
-                    file_name=f"{table_name}_geometries.geojson",
-                    mime="application/json"
-                )
+                # Create a new web map
+                webmap = WebMap()
 
-                # Function to create layers based on drawing info styles
-                def create_layers_by_styles(features):
-                    style_dict = {}
-                    for feature in features:
-                        drawing_info = feature.get('properties', {}).get('drawing_info')
-                        if drawing_info:
-                            style_key = json.dumps(drawing_info)
-                            if style_key not in style_dict:
-                                style_dict[style_key] = {
-                                    "features": [],
-                                    "drawing_info": drawing_info
-                                }
-                            style_dict[style_key]["features"].append(feature)
-                    return style_dict
-                
-                # Extract features and create layers based on drawing info
-                features = transformed_geojson['features']
-                styled_layers = create_layers_by_styles(features)
+                for df in dataframes:
+                    st.write(df)
+                    table_name = df['table_name'].iloc[0]
+                    
+                    # Convert DataFrame to GeoJSON
+                    geojson_data = json.loads(df_to_geojson(df))
+                    
+                    # Transform coordinates in GeoJSON
+                    transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
+                    
+                    # Provide download link for the results
+                    st.download_button(
+                        label=f"Download {table_name} Geometries as GeoJSON",
+                        data=json.dumps(transformed_geojson),
+                        file_name=f"{table_name}_geometries.geojson",
+                        mime="application/json"
+                    )
 
-                # Iterate over each styled layer and add it to the web map
-                for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
-                    layer_name = styled_layer["features"][0]["properties"]["table_name"]
-                    st.write(i)
-                    # Create a GeoJSON dictionary for this layer
-                    geojson_layer = {
-                        "type": "FeatureCollection",
-                        "features": styled_layer["features"]
+                    # Function to create layers based on drawing info styles
+                    def create_layers_by_styles(features):
+                        style_dict = {}
+                        for feature in features:
+                            drawing_info = feature.get('properties', {}).get('drawing_info')
+                            if drawing_info:
+                                style_key = json.dumps(drawing_info)
+                                if style_key not in style_dict:
+                                    style_dict[style_key] = {
+                                        "features": [],
+                                        "drawing_info": drawing_info
+                                    }
+                                style_dict[style_key]["features"].append(feature)
+                        return style_dict
+                    
+                    # Extract features and create layers based on drawing info
+                    features = transformed_geojson['features']
+                    styled_layers = create_layers_by_styles(features)
+
+                    # Iterate over each styled layer and add it to the web map
+                    for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
+                        layer_name = styled_layer["features"][0]["properties"]["table_name"]
+                        st.write(i)
+                        # Create a GeoJSON dictionary for this layer
+                        geojson_layer = {
+                            "type": "FeatureCollection",
+                            "features": styled_layer["features"]
+                        }
+
+                        # Convert the GeoJSON to a FeatureSet
+                        fs = FeatureSet.from_geojson(geojson_layer)
+
+                        # Extract the renderer from the drawing info
+                        renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
+
+                        # Add the FeatureSet as a layer to the web map with a title and renderer
+                        webmap.add_layer(fs, {
+                            "title": layer_name,
+                            "renderer": renderer
+                        })
+
+                # Save the web map as a new item in ArcGIS Online
+                coordinates = st_data['last_active_drawing']['geometry']['coordinates']
+                xmin = coordinates[0][0][0]
+                ymin = coordinates[0][0][1]
+                xmax = coordinates[0][2][0]
+                ymax = coordinates[0][2][1]
+
+                webmap_properties = {
+                    "title": "Web Map with Styled GeoJSON Layers",
+                    "snippet": "A web map that includes layers with different drawing styles",
+                    "tags": ["GeoJSON", "Web Map"],
+                    "extent": {
+                        "spatialReference": {"wkid": 4326},
+                        "xmin": xmin,
+                        "ymin": ymin,
+                        "xmax": xmax,
+                        "ymax": ymax
                     }
-
-                    # Convert the GeoJSON to a FeatureSet
-                    fs = FeatureSet.from_geojson(geojson_layer)
-
-                    # Extract the renderer from the drawing info
-                    renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
-
-                    # Add the FeatureSet as a layer to the web map with a title and renderer
-                    webmap.add_layer(fs, {
-                        "title": layer_name,
-                        "renderer": renderer
-                    })
-
-            # Save the web map as a new item in ArcGIS Online
-            coordinates = st_data['last_active_drawing']['geometry']['coordinates']
-            xmin = coordinates[0][0][0]
-            ymin = coordinates[0][0][1]
-            xmax = coordinates[0][2][0]
-            ymax = coordinates[0][2][1]
-
-            webmap_properties = {
-                "title": "Web Map with Styled GeoJSON Layers",
-                "snippet": "A web map that includes layers with different drawing styles",
-                "tags": ["GeoJSON", "Web Map"],
-                "extent": {
-                    "spatialReference": {"wkid": 4326},
-                    "xmin": xmin,
-                    "ymin": ymin,
-                    "xmax": xmax,
-                    "ymax": ymax
                 }
-            }
-            webmap_item = webmap.save(item_properties=webmap_properties)
+                webmap_item = webmap.save(item_properties=webmap_properties)
 
-            # Make the web map public
-            webmap_item.share(everyone=True)
+                # Make the web map public
+                webmap_item.share(everyone=True)
 
-            # Print the link to the web map
-            webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
+                # Print the link to the web map
+                webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
 
-            st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
-            st.success(f"Web map saved with ID: {webmap_item.id}")
+                st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
+                st.success(f"Web map saved with ID: {webmap_item.id}")
 
         except Exception as e:
             st.error(f"Error: {e}")
