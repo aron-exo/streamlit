@@ -81,7 +81,7 @@ def query_geometries_within_polygon_for_table(table_name, polygon_geojson):
         return pd.DataFrame()
     try:
         query = f"""
-        SELECT *, ST_AsGeoJSON(ST_Intersection(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON("SHAPE"::json), srid), 4326), ST_SetSRID(ST_GeomFromGeoJSON('{polygon_geojson}'), 4326))) as geometry, srid, drawing_info::text as drawing_info
+        SELECT *, "SHAPE"::text as geometry, srid, drawing_info::text as drawing_info
         FROM public.{table_name}
         WHERE ST_Intersects(
             ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON("SHAPE"::json), srid), 4326),
@@ -307,7 +307,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                     # Iterate over each styled layer and add it to the web map
                     for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
                         layer_name = styled_layer["features"][0]["properties"]["table_name"]
-                        st.write(i)
+                        
                         # Create a GeoJSON dictionary for this layer
                         geojson_layer = {
                             "type": "FeatureCollection",
@@ -351,13 +351,10 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap_item.share(everyone=True)
 
                 # Print the link to the web map
-                webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
-
+                webmap_url = f"https://www.arcgis.com/apps/mapviewer/index.html?webmap={webmap_item.id}"
+                
                 st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
 
         except Exception as e:
             st.error(f"Error: {e}")
-
-
-
