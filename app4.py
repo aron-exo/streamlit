@@ -268,7 +268,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap = WebMap()
 
                 for df in dataframes:
-                    st.write(df)
+                    #st.write(df)
                     table_name = df['table_name'].iloc[0]
                     
                     # Convert DataFrame to GeoJSON
@@ -351,7 +351,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap_item.share(everyone=True)
 
                 # Print the link to the web map
-                webmap_url = f"https://www.arcgis.com/apps/mapviewer/index.html?webmap={webmap_item.id}"
+                webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
 
                 st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
                 st.success(f"Web map saved with ID: {webmap_item.id}")
