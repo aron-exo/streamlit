@@ -213,9 +213,9 @@ def transform_geojson(geojson_data, from_srid, to_srid):
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
         elif feature['geometry']['type'] == "MultiLineString":
             transformed_lines = []
-                for line in coords:
-                    transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
-                feature['geometry']['coordinates'] = transformed_lines
+            for line in coords:
+                transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
+            feature['geometry']['coordinates'] = transformed_lines
         elif feature['geometry']['type'] == "Polygon":
             feature['geometry']['coordinates'] = [[transformer.transform(*coord) for coord in ring if isinstance(coord, (list, tuple)) and len(coord) == 2] for ring in coords]
         elif feature['geometry']['type'] == "MultiPolygon":
