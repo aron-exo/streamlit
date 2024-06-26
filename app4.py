@@ -12,8 +12,6 @@ from arcgis.gis import GIS
 from arcgis.mapping import WebMap
 from arcgis.features import FeatureSet
 from pyproj import Transformer
-import numpy as np
-import time
 
 # Initialize session state for geometries if not already done
 if 'geojson_list' not in st.session_state:
@@ -121,13 +119,7 @@ def query_geometries_within_polygon(polygon_geojson):
             st.session_state.table_columns[table] = get_table_columns(table)
         progress_bar.progress((idx + 1) / total_tables)
 
-    # Filter out empty DataFrames before concatenation
-    all_data = [df for df in all_data if not df.empty]
-
-    if all_data:
-        return pd.concat(all_data, ignore_index=True)
-    else:
-        return pd.DataFrame()
+    return all_data  # Return list of DataFrames
 
 # Function to add geometries to map with coordinate transformation
 def add_geometries_to_map(geojson_list, metadata_list, map_object):
@@ -221,9 +213,9 @@ def transform_geojson(geojson_data, from_srid, to_srid):
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
         elif feature['geometry']['type'] == "MultiLineString":
             transformed_lines = []
-            for line in coords:
-                transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
-            feature['geometry']['coordinates'] = transformed_lines
+                for line in coords:
+                    transformed_lines.append([transformer.transform(*coord) for coord in line if isinstance(coord, (list, tuple)) and len(coord) == 2])
+                feature['geometry']['coordinates'] = transformed_lines
         elif feature['geometry']['type'] == "Polygon":
             feature['geometry']['coordinates'] = [[transformer.transform(*coord) for coord in ring if isinstance(coord, (list, tuple)) and len(coord) == 2] for ring in coords]
         elif feature['geometry']['type'] == "MultiPolygon":
@@ -231,7 +223,6 @@ def transform_geojson(geojson_data, from_srid, to_srid):
         elif feature['geometry']['type'] == "GeometryCollection":
             feature['geometry']['geometries'] = [transform_geojson({'type': 'Feature', 'geometry': geom, 'properties': {}}, from_srid, to_srid)['geometry'] for geom in feature['geometry']['geometries']]
     return geojson_data
-
 
 # Initialize Streamlit app
 st.title('Streamlit Map Application')
@@ -261,16 +252,20 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
     
     if st.button('Query Database'):
         try:
-            df = query_geometries_within_polygon(polygon_geojson)
-            st.write(df)
-            if not df.empty:
-                st.session_state.geojson_list = df['geometry'].tolist()
-                st.session_state.metadata_list = df.to_dict(orient='records')
-                
-                # Clear the existing map and reinitialize it
-                m = initialize_map()
-                add_geometries_to_map(st.session_state.geojson_list, st.session_state.metadata_list, m)
-                st.session_state.map = m
+            dataframes = query_geometries_within_polygon(polygon_geojson)
+            if not dataframes:
+                st.write("No geometries found within the drawn polygon.")
+                return
+
+            # Authenticate with ArcGIS Online
+            gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
+            
+            # Create a new web map
+            webmap = WebMap()
+
+            for df in dataframes:
+                st.write(df)
+                table_name = df['table_name'].iloc[0]
                 
                 # Convert DataFrame to GeoJSON
                 geojson_data = json.loads(df_to_geojson(df))
@@ -278,20 +273,14 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Transform coordinates in GeoJSON
                 transformed_geojson = transform_geojson(geojson_data, "EPSG:3857", "EPSG:4326")
                 
-                                # Provide download link for the results
+                # Provide download link for the results
                 st.download_button(
-                    label="Download Geometries as GeoJSON",
+                    label=f"Download {table_name} Geometries as GeoJSON",
                     data=json.dumps(transformed_geojson),
-                    file_name="geometries.geojson",
+                    file_name=f"{table_name}_geometries.geojson",
                     mime="application/json"
                 )
-                
-                # Authenticate with ArcGIS Online
-                gis = GIS("https://www.arcgis.com", st.secrets["arcgis_username"], st.secrets["arcgis_password"])
-                
-                # Create a new web map
-                webmap = WebMap()
-                
+
                 # Function to create layers based on drawing info styles
                 def create_layers_by_styles(features):
                     style_dict = {}
@@ -310,10 +299,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 # Extract features and create layers based on drawing info
                 features = transformed_geojson['features']
                 styled_layers = create_layers_by_styles(features)
-               
-                
 
-                
                 # Iterate over each styled layer and add it to the web map
                 for i, (style_key, styled_layer) in enumerate(styled_layers.items(), 1):
                     layer_name = styled_layer["features"][0]["properties"]["table_name"]
@@ -323,61 +309,51 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                         "type": "FeatureCollection",
                         "features": styled_layer["features"]
                     }
-                                   
+
                     # Convert the GeoJSON to a FeatureSet
                     fs = FeatureSet.from_geojson(geojson_layer)
-                    
-                    
-                    
+
                     # Extract the renderer from the drawing info
                     renderer = styled_layer.get("drawing_info", {}).get("renderer", {})
-                    
+
                     # Add the FeatureSet as a layer to the web map with a title and renderer
                     webmap.add_layer(fs, {
                         "title": layer_name,
                         "renderer": renderer
                     })
-                
 
-                
-                # Save the web map as a new item in ArcGIS Online
-                coordinates = st_data['last_active_drawing']['geometry']['coordinates']
-               # print(f"Coordinates: {coordinates}")
-                
-                xmin = coordinates[0][0][0]
-                ymin = coordinates[0][0][1]
-                xmax = coordinates[0][2][0]
-                ymax = coordinates[0][2][1]
-                #print(f"xmin: {xmin}, ymin: {ymin}, xmax: {xmax}, ymax: {ymax}")
-                
-                webmap_properties = {
-                    "title": "Web Map with Styled GeoJSON Layers",
-                    "snippet": "A web map that includes layers with different drawing styles",
-                    "tags": ["GeoJSON", "Web Map"],
-                    "extent": {
-                        "spatialReference": {"wkid": 4326},
-                        "xmin": xmin,
-                        "ymin": ymin,
-                        "xmax": xmax,
-                        "ymax": ymax
-                    }
+            # Save the web map as a new item in ArcGIS Online
+            coordinates = st_data['last_active_drawing']['geometry']['coordinates']
+            xmin = coordinates[0][0][0]
+            ymin = coordinates[0][0][1]
+            xmax = coordinates[0][2][0]
+            ymax = coordinates[0][2][1]
+
+            webmap_properties = {
+                "title": "Web Map with Styled GeoJSON Layers",
+                "snippet": "A web map that includes layers with different drawing styles",
+                "tags": ["GeoJSON", "Web Map"],
+                "extent": {
+                    "spatialReference": {"wkid": 4326},
+                    "xmin": xmin,
+                    "ymin": ymin,
+                    "xmax": xmax,
+                    "ymax": ymax
                 }
-                webmap_item = webmap.save(item_properties=webmap_properties)
-                
-                # Make the web map public
-                webmap_item.share(everyone=True)
-                
-                # Print the link to the web map
-                webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
-               
-                st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
-                st.success(f"Web map saved with ID: {webmap_item.id}")
-                
+            }
+            webmap_item = webmap.save(item_properties=webmap_properties)
 
-            else:
-                st.write("No geometries found within the drawn polygon.")
+            # Make the web map public
+            webmap_item.share(everyone=True)
+
+            # Print the link to the web map
+            webmap_url = f"https://www.arcgis.com/home/webmap/viewer.html?webmap={webmap_item.id}"
+
+            st.info(f"Web map saved and made public. [View the web map]({webmap_url})")
+            st.success(f"Web map saved with ID: {webmap_item.id}")
+
         except Exception as e:
             st.error(f"Error: {e}")
 
 # Display the map using Streamlit-Folium
-#st_folium(st.session_state.map, width=700, height=500, key="map")
+st_folium(st.session_state.map, width=700, height=500, key="map")
