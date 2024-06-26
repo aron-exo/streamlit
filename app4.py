@@ -210,7 +210,7 @@ def transform_geojson(geojson_data, from_srid, to_srid):
             continue
         if feature['geometry']['type'] == "Point":
             feature['geometry']['coordinates'] = transformer.transform(*coords)
-                elif feature['geometry']['type'] == "MultiPoint":
+        elif feature['geometry']['type'] == "MultiPoint":
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
         elif feature['geometry']['type'] == "LineString":
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
