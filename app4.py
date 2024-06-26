@@ -98,8 +98,10 @@ def query_geometries_within_polygon_for_table(table_name, polygon_geojson):
         # Ensure no duplicate columns
         df = df.loc[:, ~df.columns.duplicated()]
 
-        # Add a unique identifier to ensure uniqueness
-        df['unique_id'] = df.index
+        # Check for duplicate OBJECTID values and update if necessary
+        if 'OBJECTID' in df.columns:
+            if len(df['OBJECTID'].unique()) == 1:  # All OBJECTID values are the same
+                df['OBJECTID'] = range(1, len(df) + 1)  # Assign unique values
 
         return df
     except Exception as e:
@@ -210,7 +212,7 @@ def transform_geojson(geojson_data, from_srid, to_srid):
             continue
         if feature['geometry']['type'] == "Point":
             feature['geometry']['coordinates'] = transformer.transform(*coords)
-        elif feature['geometry']['type'] == "MultiPoint":
+        elif feature['geometry']['        'type'] == "MultiPoint":
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
         elif feature['geometry']['type'] == "LineString":
             feature['geometry']['coordinates'] = [transformer.transform(*coord) for coord in coords if isinstance(coord, (list, tuple)) and len(coord) == 2]
@@ -357,5 +359,6 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
         except Exception as e:
             st.error(f"Error: {e}")
 
-
+# Display the map using Streamlit-Folium
+st_folium(st.session_state.map, width=700, height=500, key="map")
 
