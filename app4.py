@@ -268,7 +268,7 @@ if st_data and 'last_active_drawing' in st_data and st_data['last_active_drawing
                 webmap = WebMap()
 
                 for df in dataframes:
-                    st.write(df)
+                    #st.write(df)
                     table_name = df['table_name'].iloc[0]
                     
                     # Convert DataFrame to GeoJSON
